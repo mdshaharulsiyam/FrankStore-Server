@@ -29,6 +29,7 @@ const slider = client.db("FrankStore").collection("slider")
 const products = client.db("FrankStore").collection("products")
 const users = client.db("FrankStore").collection("users")
 const cart = client.db("FrankStore").collection("cart")
+const order = client.db("FrankStore").collection("order")
 // verify jwt 
 const verifyToken = async (req, res, next) => {
   const token = req.cookies?.token;
@@ -66,7 +67,7 @@ async function run() {
     // payment intant
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
-    
+
       // Create a PaymentIntent with the order amount and currency
       const paymentIntent = await stripe.paymentIntents.create({
         amount: parseInt(price * 100),
@@ -75,7 +76,7 @@ async function run() {
           "card"
         ],
       });
-    
+
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
@@ -215,12 +216,12 @@ res.send(result);
     app.get('/Cart', verifyToken, async (req, res) => {
       const { useremail } = req.query;
       if (req.user.useremail !== useremail) {
-        return res.status(403).send({message : 'forbidden access'})
+        return res.status(403).send({ message: 'forbidden access' })
       }
-      const userEmail = 'fahadnadim0273@gmail.com';
+      // const userEmail = 'fahadnadim0273@gmail.com';
       const result = await cart.aggregate([
         {
-          $match: { user: userEmail }
+          $match: { user: useremail }
         },
         {
           $unwind: '$itemIds'
@@ -250,7 +251,45 @@ res.send(result);
       ]).toArray();
       res.send(result);
     });
+    app.get('/order', verifyToken, async (req, res) => {
+      const { useremail } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const result = await cart.aggregate([
+        {
+          $match: { user: useremail }
+        },
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'itemId',
+            foreignField: '_id',
+            as: 'myOrder'
+          }
+        }
+      ]).toArray();
+      res.send(result);
+    });
+    app.delete('/Cart', async (req, res) => {
+      const { useremail, id } = req.query;
+      const update = await cart.updateOne(
+        { user: useremail },
+        { $pull: { itemIds: new ObjectId(id) } },
+      );
+      res.send(update)
+    })
+    app.post('/order', async (req, res) => {
+      const data = req.body
+      const update = await cart.updateOne(
+        { user: data.useremail },
+        { $pull: { itemIds: new ObjectId(data.itemId) } },
+      );
+      data.itemId = new ObjectId(data.itemId);
+      const result = await order.insertOne(data);
 
+      res.status(200).json({ result, update });
+    })
     // bestsale
     // get bestsale products data
     app.get('/bestsale', async (req, res) => {
