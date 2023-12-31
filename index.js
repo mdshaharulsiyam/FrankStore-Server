@@ -256,9 +256,9 @@ res.send(result);
       if (req.user.useremail !== useremail) {
         return res.status(403).send({ message: 'forbidden access' })
       }
-      const result = await cart.aggregate([
+      const result = await order.aggregate([
         {
-          $match: { user: useremail }
+          $match: { useremail: useremail }
         },
         {
           $lookup: {
@@ -269,6 +269,14 @@ res.send(result);
           }
         }
       ]).toArray();
+      res.send(result);
+    });
+    app.delete('/order', verifyToken, async (req, res) => {
+      const { useremail ,id} = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+     const result = await order.deleteOne({_id : new ObjectId(id)});
       res.send(result);
     });
     app.delete('/Cart', async (req, res) => {
