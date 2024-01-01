@@ -170,7 +170,15 @@ async function run() {
     // count products
     // get total number of products
     app.get('/productCount', async (req, res) => {
-      const result = await products.countDocuments();
+      const {seacrhValue,categoryFilter}=req.query;
+      let query = { productName: { $regex: `${seacrhValue}`, $options: 'i' } };
+      if (categoryFilter !== 'all') {
+        query = {
+          ...query,
+          category: `${categoryFilter}`
+        }
+      }
+      const result = await products.countDocuments(query);
       res.json(result)
     })
     // single products
@@ -206,9 +214,20 @@ async function run() {
         options.sort = { totalSold: -1 };
       } else if (sortBy === 'price') {
         options.sort = { price: sortValue === 'LTH' ? 1 : -1 };
+      }else if (sortBy === 'quantity') {
+        options.sort = { quantity: -1 };
       }
       // console.log(req.query)
       const result = await products.find(query).skip(parseInt(pageNumber) * parseInt(itemPerPage)).limit(parseInt(itemPerPage)).sort(options.sort).toArray();
+      res.send(result)
+    })
+    app.delete('/products',verifyToken, async (req, res) => {
+      const { useremail,id } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      // console.log(id);
+      const result = await products.deleteOne({_id : new ObjectId(id)})
       res.send(result)
     })
     // cart
