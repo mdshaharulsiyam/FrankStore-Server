@@ -215,7 +215,7 @@ async function run() {
       } else if (sortBy === 'price') {
         options.sort = { price: sortValue === 'LTH' ? 1 : -1 };
       }else if (sortBy === 'quantity') {
-        options.sort = { quantity: -1 };
+        options.sort = { quantity: 1 };
       }
       // console.log(req.query)
       const result = await products.find(query).skip(parseInt(pageNumber) * parseInt(itemPerPage)).limit(parseInt(itemPerPage)).sort(options.sort).toArray();
@@ -228,6 +228,22 @@ async function run() {
       }
       // console.log(id);
       const result = await products.deleteOne({_id : new ObjectId(id)})
+      res.send(result)
+    })
+    app.patch('/products',verifyToken, async (req, res) => {
+      const { useremail,id } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const data = req.body;
+      const filter = {_id : new ObjectId(id)}
+      const query = {
+        $set : {
+          ...data
+        }
+      }
+      // console.log(id);
+      const result = await products.updateOne(filter,query)
       res.send(result)
     })
     // cart
