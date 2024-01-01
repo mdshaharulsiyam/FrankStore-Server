@@ -114,6 +114,44 @@ async function run() {
       const result = await users.findOne(query)
       res.send(result)
     })
+    app.get('/usercount', async (req, res) => {
+      const { filter } = req.query;
+      const result = await users.estimatedDocumentCount({role : filter})
+      res.json(result)
+    })
+    app.get('/users', verifyToken, async (req, res) => {
+      const { useremail, filter, pagenumber } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      let query = {}
+      filter === 'all' ? query = {} : query.role = filter;
+      const result = await users.find(query).skip(parseInt(pagenumber)*20).limit(20).toArray()
+      res.send(result)
+    })
+    app.patch('/makeadmin', verifyToken, async (req, res) => {
+      const { useremail, id } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const filter = {_id : new ObjectId(id)}
+      const query = {
+       $set : {
+        role : 'admin'
+       }
+      }
+
+      const result = await users.updateOne(filter,query)
+      res.send(result)
+    })
+    app.delete('/users', verifyToken, async (req, res) => {
+      const { useremail, id } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const result = await users.deleteOne({_id : new ObjectId(id)})
+      res.send(result)
+    })
     // category
     // get category data
     app.get('/categores', async (req, res) => {
@@ -272,11 +310,11 @@ res.send(result);
       res.send(result);
     });
     app.delete('/order', verifyToken, async (req, res) => {
-      const { useremail ,id} = req.query;
+      const { useremail, id } = req.query;
       if (req.user.useremail !== useremail) {
         return res.status(403).send({ message: 'forbidden access' })
       }
-     const result = await order.deleteOne({_id : new ObjectId(id)});
+      const result = await order.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
     });
     app.delete('/Cart', async (req, res) => {
