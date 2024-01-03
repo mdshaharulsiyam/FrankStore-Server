@@ -107,6 +107,21 @@ async function run() {
       const result = await users.updateOne(query, updateuser)
       res.send(result)
     })
+    app.patch('/address',verifyToken, async (req, res) => {
+      const userData = req.body;
+      const { useremail } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const query = { useremail: useremail }
+      const updateuser = {
+        $set: {
+          ...userData
+        },
+      };
+      const result = await users.updateOne(query, updateuser)
+      res.send(result)
+    })
     // get single suers data
     app.get('/user', async (req, res) => {
       const { useremail } = req.query;
@@ -362,8 +377,23 @@ res.send(result);
       const result = await order.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
     });
+    app.patch('/order', verifyToken, async (req, res) => {
+      const { useremail, id } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const data = req.body
+      const filter = { _id: new ObjectId(id) }
+      const query = {
+        $set: {
+          ...data
+        }
+      }
+      const result = await order.updateOne(filter, query);
+      res.send(result);
+    });
     /// 
-    app.get('/allorder',verifyToken, async (req, res) => {
+    app.get('/allorder', verifyToken, async (req, res) => {
       const { useremail } = req.query;
       if (req.user.useremail !== useremail) {
         return res.status(403).send({ message: 'forbidden access' })
