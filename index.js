@@ -116,7 +116,7 @@ async function run() {
     })
     app.get('/usercount', async (req, res) => {
       const { filter } = req.query;
-      const result = await users.estimatedDocumentCount({role : filter})
+      const result = await users.estimatedDocumentCount({ role: filter })
       res.json(result)
     })
     app.get('/users', verifyToken, async (req, res) => {
@@ -126,7 +126,7 @@ async function run() {
       }
       let query = {}
       filter === 'all' ? query = {} : query.role = filter;
-      const result = await users.find(query).skip(parseInt(pagenumber)*20).limit(20).toArray()
+      const result = await users.find(query).skip(parseInt(pagenumber) * 20).limit(20).toArray()
       res.send(result)
     })
     app.patch('/makeadmin', verifyToken, async (req, res) => {
@@ -134,14 +134,14 @@ async function run() {
       if (req.user.useremail !== useremail) {
         return res.status(403).send({ message: 'forbidden access' })
       }
-      const filter = {_id : new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) }
       const query = {
-       $set : {
-        role : 'admin'
-       }
+        $set: {
+          role: 'admin'
+        }
       }
 
-      const result = await users.updateOne(filter,query)
+      const result = await users.updateOne(filter, query)
       res.send(result)
     })
     app.delete('/users', verifyToken, async (req, res) => {
@@ -149,7 +149,7 @@ async function run() {
       if (req.user.useremail !== useremail) {
         return res.status(403).send({ message: 'forbidden access' })
       }
-      const result = await users.deleteOne({_id : new ObjectId(id)})
+      const result = await users.deleteOne({ _id: new ObjectId(id) })
       res.send(result)
     })
     // category
@@ -170,7 +170,7 @@ async function run() {
     // count products
     // get total number of products
     app.get('/productCount', async (req, res) => {
-      const {seacrhValue,categoryFilter}=req.query;
+      const { seacrhValue, categoryFilter } = req.query;
       let query = { productName: { $regex: `${seacrhValue}`, $options: 'i' } };
       if (categoryFilter !== 'all') {
         query = {
@@ -214,36 +214,46 @@ async function run() {
         options.sort = { totalSold: -1 };
       } else if (sortBy === 'price') {
         options.sort = { price: sortValue === 'LTH' ? 1 : -1 };
-      }else if (sortBy === 'quantity') {
+      } else if (sortBy === 'quantity') {
         options.sort = { quantity: 1 };
       }
       // console.log(req.query)
       const result = await products.find(query).skip(parseInt(pageNumber) * parseInt(itemPerPage)).limit(parseInt(itemPerPage)).sort(options.sort).toArray();
       res.send(result)
     })
-    app.delete('/products',verifyToken, async (req, res) => {
-      const { useremail,id } = req.query;
-      if (req.user.useremail !== useremail) {
-        return res.status(403).send({ message: 'forbidden access' })
-      }
-      // console.log(id);
-      const result = await products.deleteOne({_id : new ObjectId(id)})
-      res.send(result)
-    })
-    app.patch('/products',verifyToken, async (req, res) => {
-      const { useremail,id } = req.query;
+    app.post('/products', verifyToken, async (req, res) => {
+      const { useremail } = req.query;
       if (req.user.useremail !== useremail) {
         return res.status(403).send({ message: 'forbidden access' })
       }
       const data = req.body;
-      const filter = {_id : new ObjectId(id)}
+      // console.log(id);
+      const result = await products.insertOne(data)
+      res.send(result)
+    })
+    app.delete('/products', verifyToken, async (req, res) => {
+      const { useremail, id } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      // console.log(id);
+      const result = await products.deleteOne({ _id: new ObjectId(id) })
+      res.send(result)
+    })
+    app.patch('/products', verifyToken, async (req, res) => {
+      const { useremail, id } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const data = req.body;
+      const filter = { _id: new ObjectId(id) }
       const query = {
-        $set : {
+        $set: {
           ...data
         }
       }
       // console.log(id);
-      const result = await products.updateOne(filter,query)
+      const result = await products.updateOne(filter, query)
       res.send(result)
     })
     // cart
@@ -352,6 +362,35 @@ res.send(result);
       const result = await order.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
     });
+    /// 
+    app.get('/allorder',verifyToken, async (req, res) => {
+      const { useremail } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const result = await order.aggregate([
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'itemId',
+            foreignField: '_id',
+            as: 'myOrder'
+          }
+        }
+      ]).toArray();
+      res.send(result)
+    })
+    app.post('/products', verifyToken, async (req, res) => {
+      const { useremail } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const data = req.body;
+      // console.log(id);
+      const result = await products.insertOne(data)
+      res.send(result)
+    })
+    ///
     app.delete('/Cart', async (req, res) => {
       const { useremail, id } = req.query;
       const update = await cart.updateOne(
