@@ -30,6 +30,7 @@ const products = client.db("FrankStore").collection("products")
 const users = client.db("FrankStore").collection("users")
 const cart = client.db("FrankStore").collection("cart")
 const order = client.db("FrankStore").collection("order")
+const feedbacks = client.db("FrankStore").collection("feedback")
 // verify jwt 
 const verifyToken = async (req, res, next) => {
   const token = req.cookies?.token;
@@ -107,7 +108,7 @@ async function run() {
       const result = await users.updateOne(query, updateuser)
       res.send(result)
     })
-    app.patch('/address',verifyToken, async (req, res) => {
+    app.patch('/address', verifyToken, async (req, res) => {
       const userData = req.body;
       const { useremail } = req.query;
       if (req.user.useremail !== useremail) {
@@ -270,6 +271,38 @@ async function run() {
       // console.log(id);
       const result = await products.updateOne(filter, query)
       res.send(result)
+    })
+    app.get('/feedback',async (req, res) => {
+      const {id}=req.query;
+      const result = await feedbacks.find({product: new ObjectId(id)}).toArray()
+      res.send(result)
+    })
+    app.post('/feedback', verifyToken, async (req, res) => {
+      const { useremail } = req.query;
+      if (req.user.useremail !== useremail) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const feedback = req.body;
+      const { rating, product } = req.body;
+      const filter = {
+        _id: new ObjectId(product)
+      }
+      const query = {
+        $inc: {
+          review: 1,
+          rating: rating
+        }
+      }
+      feedback.product = new ObjectId(product)
+      const findfeedback = await feedbacks.findOne({ useremail: feedback.useremail, product: new ObjectId(product) });
+      if (findfeedback?._id) {
+        return res.send({ result: { acknowledged: true } });
+      }
+
+      const update = await products.updateOne(filter, query)
+      const result = await feedbacks.insertOne(feedback)
+      res.send({ update, result })
+
     })
     // cart
     //add to cart 
@@ -435,6 +468,7 @@ res.send(result);
         { user: data.useremail },
         { $pull: { itemIds: new ObjectId(data.itemId) } },
       );
+      const update2 = await products.updateOne({ _id: new ObjectId(data.itemId) }, { $inc: { quantity: -1 } })
       data.itemId = new ObjectId(data.itemId);
       const result = await order.insertOne(data);
 
