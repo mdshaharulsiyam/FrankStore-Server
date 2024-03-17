@@ -82,6 +82,62 @@ async function run() {
         clientSecret: paymentIntent.client_secret,
       });
     });
+    // dashboard statisic
+    app.get('/dashboard', async (req, res) => {
+      const combinedAggregation = await Promise.all([
+        products.aggregate([
+          {
+            $group: {
+              _id: "$category",
+              totalQuantity: { $sum: "$quantity" }
+            }
+          },
+          {
+            $project: {
+              category: "$_id",
+              totalQuantity: 1,
+              _id: 0
+            }
+          }
+        ]).toArray(),
+        products.aggregate([
+          {
+            $group: {
+              _id: null,
+              totalProducts: { $sum: "$quantity" }
+            }
+          },
+          {
+            $project: {
+              totalProducts: 1,
+              _id: 0
+            }
+          }
+        ]).toArray(),
+        order.aggregate([
+          {
+            $group: {
+              _id: null,
+              totalOrders: { $sum: 1 },
+              totalAmount: { $sum: "$amount" }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              totalOrders: 1,
+              totalAmount: 1
+            }
+          }
+        ]).toArray(),
+        users.estimatedDocumentCount()
+      ]);
+
+      const totalProducts = combinedAggregation[0];
+      const ordersData = combinedAggregation[1];
+      const totalUser = combinedAggregation[2];
+      return res.send(combinedAggregation)
+    })
     // users
     // post suers data //require('crypto').randomBytes(16).toString('hex')
     app.post('/users', async (req, res) => {
@@ -272,9 +328,9 @@ async function run() {
       const result = await products.updateOne(filter, query)
       res.send(result)
     })
-    app.get('/feedback',async (req, res) => {
-      const {id}=req.query;
-      const result = await feedbacks.find({product: new ObjectId(id)}).toArray()
+    app.get('/feedback', async (req, res) => {
+      const { id } = req.query;
+      const result = await feedbacks.find({ product: new ObjectId(id) }).toArray()
       res.send(result)
     })
     app.post('/feedback', verifyToken, async (req, res) => {
