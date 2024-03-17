@@ -10,7 +10,7 @@ const stripe = require("stripe")(process.env.SRTIPE_KEY)
 // middleware
 app.use(express.json())
 app.use(cors({
-  origin: ['http://localhost:5173'],
+  origin: ['https://storied-stardust-becd39.netlify.app', 'http://localhost:5173'],
   credentials: true,
   optionSuccessStatus: 200
 }));
@@ -83,7 +83,54 @@ async function run() {
       });
     });
     // dashboard statisic
-    app.get('/dashboard', async (req, res) => {
+    app.get('/dashboard/:email', async (req, res) => {
+      const email = req.params.email
+      // console.log(email)
+      const user = await users.findOne({ useremail: email })
+      if (!user) {
+        return res.send({ msg: "user not fund" })
+      }
+      if (user.role === 'user') {
+        const combinedAggregation = await Promise.all([
+          order.aggregate([
+            {
+              $match: {
+                useremail: email
+              }
+            },
+
+            {
+              $group: {
+                _id: null,
+                totalOrders: { $sum: 1 },
+                totalAmount: { $sum: "$amount" }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                totalOrders: 1,
+                totalAmount: 1
+              }
+            }
+          ]).toArray(),
+
+          cart.aggregate([
+            {
+              $match: {
+                user: email
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                itemCount: { $size: "$itemIds" }
+              }
+            }
+          ]).toArray()
+        ])
+        return res.send(combinedAggregation)
+      }
       const combinedAggregation = await Promise.all([
         products.aggregate([
           {
@@ -132,10 +179,6 @@ async function run() {
         ]).toArray(),
         users.estimatedDocumentCount()
       ]);
-
-      const totalProducts = combinedAggregation[0];
-      const ordersData = combinedAggregation[1];
-      const totalUser = combinedAggregation[2];
       return res.send(combinedAggregation)
     })
     // users
