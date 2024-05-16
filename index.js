@@ -10,7 +10,7 @@ const stripe = require("stripe")(process.env.SRTIPE_KEY)
 // middleware
 app.use(express.json())
 app.use(cors({
-  origin: ['https://storied-stardust-becd39.netlify.app', 'http://localhost:5173'],
+  origin: ['https://storied-stardust-becd39.netlify.app', 'http://localhost:5173','https://storied-stardust-becd39.netlify.app/'],
   credentials: true,
   optionSuccessStatus: 200
 }));
